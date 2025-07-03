@@ -12,22 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // CORS config
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://dr-phone.netlify.app'
-];
-
-app.use(cors({
-  origin: function(origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      return callback(new Error('CORS not allowed'), false);
-    }
-    return callback(null, true);
-  },
-  credentials: true
-}));
+app.use(cors());
 
 app.use(express.json());
 app.use(morgan('dev'));
