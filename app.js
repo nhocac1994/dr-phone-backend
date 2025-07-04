@@ -10,21 +10,28 @@ const app = express();
 
 // Cấu hình CORS
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'https://dr-phone.netlify.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 // Middleware
-app.use(cors(corsOptions));
-app.use(express.json());
-
-// Thêm db vào request
 app.use((req, res, next) => {
+  console.log('Request:', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+    body: req.body
+  });
   req.app.set('db', db);
   next();
 });
+
+app.use(cors(corsOptions));
+app.use(express.json());
 
 // Routes
 const authRoutes = require('./src/routes/auth');
@@ -45,6 +52,15 @@ app.get('/', (req, res) => {
     message: 'Phone Repair Shop API Server',
     status: 'running',
     timestamp: new Date().toISOString()
+  });
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
