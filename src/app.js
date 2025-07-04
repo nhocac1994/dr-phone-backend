@@ -16,13 +16,28 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// Debug middleware
+app.use((req, res, next) => {
+  console.log('Request:', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+    body: req.body
+  });
+  next();
+});
+
 // CORS config
 app.use(cors({
   origin: [
     'http://localhost:5173',
     'https://dr-phone.netlify.app'
   ],
-  credentials: true
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 app.use(express.json());
