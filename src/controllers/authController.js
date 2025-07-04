@@ -11,4 +11,24 @@ exports.login = (req, res) => {
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
   });
+};
+
+exports.me = (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Không tìm thấy token' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    db.get('SELECT id, username, role FROM users WHERE id = ?', [decoded.id], (err, user) => {
+      if (err || !user) {
+        return res.status(401).json({ error: 'Người dùng không tồn tại' });
+      }
+      res.json(user);
+    });
+  } catch (error) {
+    res.status(401).json({ error: 'Token không hợp lệ' });
+  }
 }; 

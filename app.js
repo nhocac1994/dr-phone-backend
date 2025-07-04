@@ -1,54 +1,68 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const morgan = require('morgan');
-const dotenv = require('dotenv');
 const path = require('path');
-const { initDb, createDefaultAdmin } = require('./src/config/db');
-
-// Debug logging
-console.log('Current directory:', process.cwd());
-console.log('__dirname:', __dirname);
-console.log('File location:', __filename);
-
-// Load env
-dotenv.config();
+const fs = require('fs');
+const bcrypt = require('bcryptjs');
+const { db, initDb, createDefaultAdmin, createDefaultCategories } = require('./src/config/db');
 
 const app = express();
-const PORT = process.env.PORT || 8080;
 
-// CORS config
-app.use(cors());
+// Cấu hình CORS
+const corsOptions = {
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
 
+// Middleware
+app.use(cors(corsOptions));
 app.use(express.json());
-app.use(morgan('dev'));
 
-// Khởi tạo DB và admin mặc định
-initDb();
-createDefaultAdmin();
+// Thêm db vào request
+app.use((req, res, next) => {
+  req.app.set('db', db);
+  next();
+});
 
 // Routes
-app.use('/api/auth', require('./src/routes/auth'));
-app.use('/api/users', require('./src/routes/users'));
-app.use('/api/services', require('./src/routes/services'));
-app.use('/api/orders', require('./src/routes/orders'));
+const authRoutes = require('./src/routes/auth');
+const serviceRoutes = require('./src/routes/services');
+const userRoutes = require('./src/routes/users');
+const orderRoutes = require('./src/routes/orders');
+const categoryRoutes = require('./src/routes/categories');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Health check
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Phone Repair Shop API Server',
     status: 'running',
-    timestamp: new Date().toISOString(),
-    directory: process.cwd(),
-    dirname: __dirname
+    timestamp: new Date().toISOString()
   });
 });
 
-// 404
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not found' });
-});
+// Khởi tạo database và tạo tài khoản admin
+async function initializeApp() {
+  try {
+    await initDb();
+    await createDefaultAdmin();
+    await createDefaultCategories();
+    
+    const PORT = process.env.PORT || 8080;
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Error initializing application:', error);
+    process.exit(1);
+  }
+}
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-}); 
+initializeApp(); 

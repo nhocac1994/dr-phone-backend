@@ -1,17 +1,32 @@
 const jwt = require('jsonwebtoken');
+const db = require('../config/db');
 
-exports.verifyToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Thiếu token' });
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Token không hợp lệ' });
-    req.user = user;
+const auth = (req, res, next) => {
+  try {
+    // Lấy token từ header
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Không tìm thấy token xác thực' });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    req.user = decoded;
     next();
-  });
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    res.status(401).json({ error: 'Token không hợp lệ' });
+  }
 };
 
-exports.isAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Chỉ admin được phép' });
+const isAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Không có quyền truy cập' });
+  }
   next();
+};
+
+module.exports = {
+  auth,
+  isAdmin
 }; 

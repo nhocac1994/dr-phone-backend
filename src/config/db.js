@@ -1,79 +1,131 @@
 const sqlite3 = require('sqlite3').verbose();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const path = require('path');
-const fs = require('fs');
 
-// Sử dụng thư mục trong project
-const DB_PATH = path.join(process.cwd(), 'data');
-const DB_FILE = path.join(DB_PATH, 'database.sqlite');
+// Tạo kết nối database
+const dbPath = path.resolve(__dirname, '../../database.sqlite');
+console.log('Database path:', dbPath);
 
-// Log thông tin database
-console.log('Database configuration:');
-console.log('- Current directory:', process.cwd());
-console.log('- Database path:', DB_FILE);
-console.log('- Data directory:', DB_PATH);
-
-// Đảm bảo thư mục data tồn tại
-try {
-  if (!fs.existsSync(DB_PATH)) {
-    console.log('Creating data directory:', DB_PATH);
-    fs.mkdirSync(DB_PATH, { recursive: true });
-  }
-  console.log('Data directory is ready');
-} catch (err) {
-  console.error('Error with data directory:', err.message);
-  // Thử tạo trong thư mục hiện tại
-  const fallbackPath = path.join(process.cwd(), 'database.sqlite');
-  console.log('Falling back to:', fallbackPath);
-  DB_FILE = fallbackPath;
-}
-
-// Kết nối database
-const db = new sqlite3.Database(DB_FILE, (err) => {
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
-    console.error('Database connection error:', err.message);
-    console.error('Error code:', err.code);
-    console.error('Error number:', err.errno);
-    return;
+    console.error('Error connecting to database:', err.message);
+  } else {
+    console.log('Connected to SQLite database');
   }
-  console.log('Successfully connected to database');
 });
 
+// Khởi tạo database
 function initDb() {
-  console.log('Initializing database tables...');
-  db.serialize(() => {
+  return new Promise((resolve, reject) => {
+    // Enable foreign keys
+    db.run('PRAGMA foreign_keys = ON');
+
     // Tạo bảng users
     db.run(`CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE,
-      password TEXT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
       role TEXT DEFAULT 'user',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`, (err) => {
-      if (err) console.error('Error creating users table:', err.message);
-      else console.log('Users table ready');
-    });
-
-    // Tạo bảng services
-    db.run(`CREATE TABLE IF NOT EXISTS services (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT,
-      price INTEGER,
-      description TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`, (err) => {
-      if (err) console.error('Error creating services table:', err.message);
-      else console.log('Services table ready');
+      if (err) {
+        console.error('Error creating users table:', err.message);
+        reject(err);
+        return;
+      }
+      console.log('Users table ready');
     });
 
     // Tạo bảng categories
     db.run(`CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      name TEXT NOT NULL,
+      description TEXT,
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`, (err) => {
-      if (err) console.error('Error creating categories table:', err.message);
-      else console.log('Categories table ready');
+      if (err) {
+        console.error('Error creating categories table:', err.message);
+        reject(err);
+        return;
+      }
+      console.log('Categories table ready');
+    });
+
+    // Tạo bảng sub_categories
+    db.run(`CREATE TABLE IF NOT EXISTS sub_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(category_id) REFERENCES categories(id)
+    )`, (err) => {
+      if (err) {
+        console.error('Error creating sub_categories table:', err.message);
+        reject(err);
+        return;
+      }
+      console.log('Sub categories table ready');
+    });
+
+    // Tạo bảng services
+    db.run(`CREATE TABLE IF NOT EXISTS services (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_id INTEGER,
+      sub_category_id INTEGER,
+      name TEXT NOT NULL,
+      description TEXT,
+      content TEXT,
+      price INTEGER NOT NULL,
+      warranty TEXT,
+      repair_time TEXT,
+      promotion TEXT,
+      vip_discount INTEGER,
+      student_discount INTEGER,
+      images TEXT,
+      status TEXT DEFAULT 'active',
+      featured BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(category_id) REFERENCES categories(id),
+      FOREIGN KEY(sub_category_id) REFERENCES sub_categories(id)
+    )`, (err) => {
+      if (err) {
+        console.error('Error creating services table:', err.message);
+        reject(err);
+        return;
+      }
+      console.log('Services table ready');
+    });
+
+    // Tạo bảng spare_parts
+    db.run(`CREATE TABLE IF NOT EXISTS spare_parts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      service_id INTEGER,
+      name TEXT NOT NULL,
+      original_price INTEGER NOT NULL,
+      discount_percent INTEGER DEFAULT 0,
+      final_price INTEGER,
+      warranty TEXT,
+      repair_time TEXT,
+      description TEXT,
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(service_id) REFERENCES services(id)
+    )`, (err) => {
+      if (err) {
+        console.error('Error creating spare_parts table:', err.message);
+        reject(err);
+        return;
+      }
+      console.log('Spare parts table ready');
     });
 
     // Tạo bảng orders
@@ -81,41 +133,227 @@ function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER,
       service_id INTEGER,
+      spare_part_id INTEGER,
+      customer_name TEXT NOT NULL,
+      customer_phone TEXT NOT NULL,
+      customer_email TEXT,
+      scheduled_time DATETIME,
+      notes TEXT,
       status TEXT DEFAULT 'pending',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(user_id) REFERENCES users(id),
-      FOREIGN KEY(service_id) REFERENCES services(id)
+      FOREIGN KEY(service_id) REFERENCES services(id),
+      FOREIGN KEY(spare_part_id) REFERENCES spare_parts(id)
     )`, (err) => {
-      if (err) console.error('Error creating orders table:', err.message);
-      else console.log('Orders table ready');
+      if (err) {
+        console.error('Error creating orders table:', err.message);
+        reject(err);
+        return;
+      }
+      console.log('Orders table ready');
+      resolve();
     });
   });
 }
 
-function createDefaultAdmin() {
-  console.log('Checking for default admin account...');
-  db.get('SELECT * FROM users WHERE username = ?', ['admin'], async (err, row) => {
-    if (err) {
-      console.error('Error checking admin account:', err.message);
-      return;
-    }
-    if (!row) {
-      try {
-        const hash = await bcrypt.hash('admin123', 10);
-        db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', 
-          ['admin', hash, 'admin'], 
+// Tạo admin mặc định
+async function createDefaultAdmin() {
+  return new Promise((resolve, reject) => {
+    const defaultAdmin = {
+      username: 'admin',
+      password: bcrypt.hashSync('admin123', 10),
+      role: 'admin'
+    };
+
+    db.get('SELECT id FROM users WHERE username = ?', [defaultAdmin.username], (err, user) => {
+      if (err) {
+        console.error('Error checking admin:', err.message);
+        reject(err);
+        return;
+      }
+
+      if (!user) {
+        db.run(
+          'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+          [defaultAdmin.username, defaultAdmin.password, defaultAdmin.role],
           (err) => {
-            if (err) console.error('Error creating admin account:', err.message);
-            else console.log('Default admin account created successfully');
+            if (err) {
+              console.error('Error creating admin:', err.message);
+              reject(err);
+            } else {
+              console.log('Default admin created');
+              resolve();
+            }
           }
         );
-      } catch (err) {
-        console.error('Error hashing password:', err.message);
+      } else {
+        console.log('Admin already exists');
+        resolve();
       }
-    } else {
-      console.log('Default admin account already exists');
-    }
+    });
   });
 }
 
-module.exports = { db, initDb, createDefaultAdmin }; 
+// Tạo danh mục mặc định
+async function createDefaultCategories() {
+  return new Promise((resolve, reject) => {
+    console.log('Checking for default categories...');
+    db.get('SELECT COUNT(*) as count FROM categories', [], (err, row) => {
+      if (err) {
+        console.error('Error checking categories:', err.message);
+        reject(err);
+        return;
+      }
+      if (row.count === 0) {
+        const defaultCategories = [
+          { 
+            name: 'iPhone',
+            description: 'Dịch vụ sửa chữa iPhone',
+            subCategories: [
+              'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15',
+              'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14 Plus', 'iPhone 14',
+              'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13', 'iPhone 13 Mini',
+              'iPhone 12 Pro Max', 'iPhone 12 Pro', 'iPhone 12', 'iPhone 12 Mini',
+              'iPhone 11 Pro Max', 'iPhone 11 Pro', 'iPhone 11',
+              'iPhone XS Max', 'iPhone XS', 'iPhone XR', 'iPhone X',
+              'iPhone 8 Plus', 'iPhone 8', 'iPhone 7 Plus', 'iPhone 7',
+              'iPhone 6s Plus', 'iPhone 6s', 'iPhone 6 Plus', 'iPhone 6'
+            ]
+          },
+          { 
+            name: 'Samsung',
+            description: 'Dịch vụ sửa chữa Samsung',
+            subCategories: [
+              'Galaxy S23 Ultra', 'Galaxy S23+', 'Galaxy S23',
+              'Galaxy S22 Ultra', 'Galaxy S22+', 'Galaxy S22',
+              'Galaxy S21 Ultra', 'Galaxy S21+', 'Galaxy S21',
+              'Galaxy S20 Ultra', 'Galaxy S20+', 'Galaxy S20',
+              'Galaxy Note 20 Ultra', 'Galaxy Note 20',
+              'Galaxy Note 10+', 'Galaxy Note 10',
+              'Galaxy A73', 'Galaxy A53', 'Galaxy A33',
+              'Galaxy A72', 'Galaxy A52', 'Galaxy A32'
+            ]
+          },
+          { 
+            name: 'Oppo',
+            description: 'Dịch vụ sửa chữa Oppo',
+            subCategories: [
+              'Find X6 Pro', 'Find X6', 'Find X5 Pro', 'Find X5',
+              'Reno 10 Pro+', 'Reno 10 Pro', 'Reno 10',
+              'Reno 9 Pro+', 'Reno 9 Pro', 'Reno 9',
+              'Reno 8 Pro', 'Reno 8', 'Reno 7 Pro', 'Reno 7'
+            ]
+          },
+          { 
+            name: 'Xiaomi',
+            description: 'Dịch vụ sửa chữa Xiaomi',
+            subCategories: [
+              '13 Pro', '13', '12 Pro', '12',
+              'Redmi Note 12 Pro+', 'Redmi Note 12 Pro', 'Redmi Note 12',
+              'Redmi Note 11 Pro+', 'Redmi Note 11 Pro', 'Redmi Note 11',
+              'POCO F5 Pro', 'POCO F5', 'POCO X5 Pro', 'POCO X5'
+            ]
+          },
+          { 
+            name: 'Vivo',
+            description: 'Dịch vụ sửa chữa Vivo',
+            subCategories: [
+              'X90 Pro+', 'X90 Pro', 'X90',
+              'V27 Pro', 'V27', 'V25 Pro', 'V25',
+              'Y35', 'Y22', 'Y21', 'Y15'
+            ]
+          },
+          { 
+            name: 'Realme',
+            description: 'Dịch vụ sửa chữa Realme',
+            subCategories: [
+              'GT Neo 5', 'GT Neo 3',
+              '11 Pro+', '11 Pro', '11',
+              '10 Pro+', '10 Pro', '10',
+              '9 Pro+', '9 Pro', '9'
+            ]
+          },
+          { 
+            name: 'Macbook',
+            description: 'Dịch vụ sửa chữa Macbook',
+            subCategories: [
+              'MacBook Pro 16" M3', 'MacBook Pro 14" M3',
+              'MacBook Pro 16" M2', 'MacBook Pro 14" M2',
+              'MacBook Air 15" M2', 'MacBook Air 13" M2',
+              'MacBook Pro 16" M1', 'MacBook Pro 14" M1',
+              'MacBook Air M1'
+            ]
+          },
+          { 
+            name: 'iPad',
+            description: 'Dịch vụ sửa chữa iPad',
+            subCategories: [
+              'iPad Pro 12.9" M2', 'iPad Pro 11" M2',
+              'iPad Pro 12.9" M1', 'iPad Pro 11" M1',
+              'iPad Air 5', 'iPad Air 4',
+              'iPad mini 6', 'iPad mini 5',
+              'iPad 10', 'iPad 9', 'iPad 8'
+            ]
+          },
+          { 
+            name: 'AirPods',
+            description: 'Dịch vụ sửa chữa AirPods',
+            subCategories: [
+              'AirPods Pro 2', 'AirPods Pro',
+              'AirPods 3', 'AirPods 2', 'AirPods',
+              'AirPods Max'
+            ]
+          },
+          { 
+            name: 'Huawei',
+            description: 'Dịch vụ sửa chữa Huawei',
+            subCategories: [
+              'P60 Pro', 'P60', 'P50 Pro', 'P50',
+              'Mate 50 Pro', 'Mate 50',
+              'Nova 11 Pro', 'Nova 11', 'Nova 10 Pro', 'Nova 10'
+            ]
+          }
+        ];
+
+        // Insert categories and sub-categories
+        for (const category of defaultCategories) {
+          db.run(
+            'INSERT INTO categories (name, description) VALUES (?, ?)',
+            [category.name, category.description],
+            function(err) {
+              if (err) {
+                console.error('Error inserting category:', err.message);
+                return;
+              }
+              const categoryId = this.lastID;
+
+              // Insert sub-categories
+              const stmt = db.prepare('INSERT INTO sub_categories (category_id, name) VALUES (?, ?)');
+              for (const subCatName of category.subCategories) {
+                stmt.run([categoryId, subCatName], (err) => {
+                  if (err) {
+                    console.error('Error inserting sub-category:', err.message);
+                  }
+                });
+              }
+              stmt.finalize();
+            }
+          );
+        }
+        console.log('Default categories and sub-categories created successfully');
+        resolve();
+      } else {
+        console.log('Categories already exist');
+        resolve();
+      }
+    });
+  });
+}
+
+module.exports = {
+  db,
+  initDb,
+  createDefaultAdmin,
+  createDefaultCategories
+}; 

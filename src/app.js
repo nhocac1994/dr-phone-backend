@@ -3,7 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 const path = require('path');
-const { initDb, createDefaultAdmin } = require('./config/db');
+const { initDb, createDefaultAdmin, createDefaultCategories } = require('./config/db');
 
 // Debug logging
 console.log('Current directory:', process.cwd());
@@ -25,12 +25,14 @@ app.use(morgan('dev'));
 // Khởi tạo DB và admin mặc định
 initDb();
 createDefaultAdmin();
+createDefaultCategories();
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/services', require('./routes/services'));
 app.use('/api/orders', require('./routes/orders'));
+app.use('/api/categories', require('./routes/categories'));
 
 // Health check
 app.get('/', (req, res) => {
