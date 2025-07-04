@@ -3,7 +3,7 @@ services:
     name: dr-phone-backend
     env: node
     buildCommand: npm install
-    startCommand: node ./src/app.js
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
