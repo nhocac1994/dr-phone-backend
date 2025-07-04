@@ -1,1 +1,1 @@
-web: node $PWD/src/app.js 
+web: npm start 

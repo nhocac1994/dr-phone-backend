@@ -2,10 +2,10 @@
   "name": "phone-repair-backend",
   "version": "1.0.0",
   "description": "Backend API for Phone Repair Shop (Express + SQLite)",
-  "main": "src/app.js",
+  "main": "start.js",
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "start": "node start.js",
+    "dev": "nodemon start.js"
   },
   "dependencies": {
     "express": "^4.18.2",
