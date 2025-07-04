@@ -8,17 +8,39 @@ const { db, initDb, createDefaultAdmin, createDefaultCategories } = require('./s
 
 const app = express();
 
-// Cấu hình CORS
+// CORS middleware phải đặt đầu tiên
 const corsOptions = {
   origin: ['http://localhost:5173', 'http://localhost:3000', 'https://dr-phone.netlify.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
   credentials: true,
   preflightContinue: false,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
+  maxAge: 86400 // 24 hours
 };
 
-// Middleware
+app.use(cors(corsOptions));
+
+// Thêm CORS headers cho mọi response
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Origin, X-Requested-With, Accept');
+  res.header('Access-Control-Allow-Credentials', true);
+  
+  // Handle OPTIONS method
+  if ('OPTIONS' === req.method) {
+    res.status(204).send();
+  } else {
+    next();
+  }
+});
+
+// Parse JSON bodies
+app.use(express.json());
+
+// Debug logging
 app.use((req, res, next) => {
   console.log('Request:', {
     method: req.method,
@@ -29,9 +51,6 @@ app.use((req, res, next) => {
   req.app.set('db', db);
   next();
 });
-
-app.use(cors(corsOptions));
-app.use(express.json());
 
 // Routes
 const authRoutes = require('./src/routes/auth');
