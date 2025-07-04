@@ -3,7 +3,7 @@ services:
     name: dr-phone-backend
     env: node
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: node app.js
     disk:
       name: data
       mountPath: /data
