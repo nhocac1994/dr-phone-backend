@@ -12,6 +12,7 @@ yarn-error.log*
 # Database
 *.sqlite
 *.sqlite3
+data/
 
 # Logs
 *.log

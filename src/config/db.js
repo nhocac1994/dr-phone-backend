@@ -3,26 +3,29 @@ const bcrypt = require('bcrypt');
 const path = require('path');
 const fs = require('fs');
 
-// Sử dụng /data directory trên Render hoặc local path
-const DB_PATH = process.env.NODE_ENV === 'production' ? '/data' : path.join(__dirname, '../..');
+// Sử dụng thư mục trong project
+const DB_PATH = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DB_PATH, 'database.sqlite');
 
 // Log thông tin database
 console.log('Database configuration:');
-console.log('- Environment:', process.env.NODE_ENV);
+console.log('- Current directory:', process.cwd());
 console.log('- Database path:', DB_FILE);
 console.log('- Data directory:', DB_PATH);
 
-// Kiểm tra thư mục data
+// Đảm bảo thư mục data tồn tại
 try {
-  const stats = fs.statSync(DB_PATH);
-  console.log('Data directory status:');
-  console.log('- Exists:', true);
-  console.log('- Permissions:', stats.mode.toString(8));
-  console.log('- Owner:', stats.uid);
-  console.log('- Group:', stats.gid);
+  if (!fs.existsSync(DB_PATH)) {
+    console.log('Creating data directory:', DB_PATH);
+    fs.mkdirSync(DB_PATH, { recursive: true });
+  }
+  console.log('Data directory is ready');
 } catch (err) {
-  console.error('Error checking data directory:', err.message);
+  console.error('Error with data directory:', err.message);
+  // Thử tạo trong thư mục hiện tại
+  const fallbackPath = path.join(process.cwd(), 'database.sqlite');
+  console.log('Falling back to:', fallbackPath);
+  DB_FILE = fallbackPath;
 }
 
 // Kết nối database
