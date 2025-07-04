@@ -5,6 +5,11 @@ const dotenv = require('dotenv');
 const path = require('path');
 const { initDb, createDefaultAdmin } = require('./config/db');
 
+// Debug logging
+console.log('Current directory:', process.cwd());
+console.log('__dirname:', __dirname);
+console.log('File location:', __filename);
+
 // Load env
 dotenv.config();
 
@@ -32,7 +37,9 @@ app.get('/', (req, res) => {
   res.json({ 
     message: 'Phone Repair Shop API Server',
     status: 'running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    directory: process.cwd(),
+    dirname: __dirname
   });
 });
 

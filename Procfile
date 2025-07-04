@@ -1,1 +1,1 @@
-web: node src/app.js 
+web: node $PWD/src/app.js 
