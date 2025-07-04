@@ -2,7 +2,10 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
 const path = require('path');
 
-const DB_FILE = process.env.DB_FILE || path.join(__dirname, '../../database.sqlite');
+// Sử dụng /data directory trên Render hoặc local path
+const DB_FILE = process.env.NODE_ENV === 'production' 
+  ? '/data/database.sqlite'
+  : path.join(__dirname, '../../database.sqlite');
 
 const db = new sqlite3.Database(DB_FILE);
 
