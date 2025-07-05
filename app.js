@@ -40,6 +40,18 @@ app.use((req, res, next) => {
 // Parse JSON bodies
 app.use(express.json());
 
+// Parse URL-encoded bodies
+app.use(express.urlencoded({ extended: true }));
+
+// Ensure upload directory exists
+const uploadDir = path.join(__dirname, 'public/img');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Serve static files
+app.use('/img', express.static(path.join(__dirname, 'public/img')));
+
 // Debug logging
 app.use((req, res, next) => {
   console.log('Request:', {

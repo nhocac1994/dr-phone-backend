@@ -48,6 +48,25 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Lấy danh sách model theo danh mục
+router.get('/:id/models', (req, res) => {
+  const { id } = req.params;
+  
+  const query = `
+    SELECT * FROM product_models
+    WHERE category_id = ? AND status = 'active'
+    ORDER BY name ASC
+  `;
+
+  db.all(query, [id], (err, rows) => {
+    if (err) {
+      console.error('Error getting product models:', err.message);
+      return res.status(500).json({ error: 'Lỗi khi lấy danh sách model' });
+    }
+    res.json(rows);
+  });
+});
+
 // Admin routes
 router.post('/', auth, isAdmin, async (req, res) => {
   const { name, description } = req.body;
