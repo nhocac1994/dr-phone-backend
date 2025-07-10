@@ -89,6 +89,8 @@ const userRoutes = require('./src/routes/users');
 const orderRoutes = require('./src/routes/orders');
 const categoryRoutes = require('./src/routes/categories');
 const bannerRoutes = require('./src/routes/banners');
+// const settingsRoutes = require('./src/routes/settings');
+// const staticPagesRoutes = require('./src/routes/staticPages');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
@@ -96,6 +98,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/banners', bannerRoutes);
+// app.use('/api/settings', settingsRoutes);
+// app.use('/api/static-pages', staticPagesRoutes);
 
 // Health check
 app.get('/', (req, res) => {
@@ -143,10 +147,13 @@ app.use((err, req, res, next) => {
 // Khởi tạo database và tạo tài khoản admin
 async function initializeApp() {
   try {
+    console.log('--- Bắt đầu initDb ---');
     await initDb();
+    console.log('--- xong initDb ---');
     await createDefaultAdmin();
+    console.log('--- xong createDefaultAdmin ---');
     await createDefaultCategories();
-    
+    console.log('--- xong createDefaultCategories ---');
     const PORT = process.env.PORT || 8080;
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
@@ -154,8 +161,8 @@ async function initializeApp() {
     });
   } catch (error) {
     console.error('Error initializing application:', error);
+    console.error(error.stack);
     process.exit(1);
   }
 }
-
 initializeApp(); 

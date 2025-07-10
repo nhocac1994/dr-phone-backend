@@ -17,142 +17,149 @@ const db = new sqlite3.Database(dbPath, (err) => {
 // Khởi tạo database
 function initDb() {
   return new Promise((resolve, reject) => {
-    // Enable foreign keys
-    db.run('PRAGMA foreign_keys = ON');
+    db.serialize(() => {
+      db.run('PRAGMA foreign_keys = ON');
 
-    // Tạo bảng users
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      role TEXT DEFAULT 'user',
-      status TEXT DEFAULT 'active',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`, (err) => {
-      if (err) {
-        console.error('Error creating users table:', err.message);
-        reject(err);
-        return;
-      }
-      console.log('Users table ready');
-    });
+      db.run(`CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        status TEXT DEFAULT 'active',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`, (err) => {
+        if (err) return reject(err);
+        console.log('Users table ready');
+      });
 
-    // Tạo bảng categories
-    db.run(`CREATE TABLE IF NOT EXISTS categories (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      description TEXT,
-      status TEXT DEFAULT 'active',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`, (err) => {
-      if (err) {
-        console.error('Error creating categories table:', err.message);
-        reject(err);
-        return;
-      }
-      console.log('Categories table ready');
-    });
+      db.run(`CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        status TEXT DEFAULT 'active',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`, (err) => {
+        if (err) return reject(err);
+        console.log('Categories table ready');
+      });
 
-    // Tạo bảng sub_categories
-    db.run(`CREATE TABLE IF NOT EXISTS sub_categories (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      category_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      description TEXT,
-      status TEXT DEFAULT 'active',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(category_id) REFERENCES categories(id)
-    )`, (err) => {
-      if (err) {
-        console.error('Error creating sub_categories table:', err.message);
-        reject(err);
-        return;
-      }
-      console.log('Sub categories table ready');
-    });
+      db.run(`CREATE TABLE IF NOT EXISTS sub_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        status TEXT DEFAULT 'active',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(category_id) REFERENCES categories(id)
+      )`, (err) => {
+        if (err) return reject(err);
+        console.log('Sub categories table ready');
+      });
 
-    // Tạo bảng services
-    db.run(`CREATE TABLE IF NOT EXISTS services (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      category_id INTEGER,
-      sub_category_id INTEGER,
-      name TEXT NOT NULL,
-      description TEXT,
-      content TEXT,
-      price INTEGER NOT NULL,
-      warranty TEXT,
-      repair_time TEXT,
-      promotion TEXT,
-      vip_discount INTEGER,
-      student_discount INTEGER,
-      images TEXT,
-      status TEXT DEFAULT 'active',
-      featured BOOLEAN DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(category_id) REFERENCES categories(id),
-      FOREIGN KEY(sub_category_id) REFERENCES sub_categories(id)
-    )`, (err) => {
-      if (err) {
-        console.error('Error creating services table:', err.message);
-        reject(err);
-        return;
-      }
-      console.log('Services table ready');
-    });
+      db.run(`CREATE TABLE IF NOT EXISTS services (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_id INTEGER,
+        sub_category_id INTEGER,
+        name TEXT NOT NULL,
+        description TEXT,
+        content TEXT,
+        price INTEGER NOT NULL,
+        warranty TEXT,
+        repair_time TEXT,
+        promotion TEXT,
+        vip_discount INTEGER,
+        student_discount INTEGER,
+        images TEXT,
+        status TEXT DEFAULT 'active',
+        featured BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(category_id) REFERENCES categories(id),
+        FOREIGN KEY(sub_category_id) REFERENCES sub_categories(id)
+      )`, (err) => {
+        if (err) return reject(err);
+        console.log('Services table ready');
+      });
 
-    // Tạo bảng spare_parts
-    db.run(`CREATE TABLE IF NOT EXISTS spare_parts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      service_id INTEGER,
-      name TEXT NOT NULL,
-      original_price INTEGER NOT NULL,
-      discount_percent INTEGER DEFAULT 0,
-      final_price INTEGER,
-      warranty TEXT,
-      repair_time TEXT,
-      description TEXT,
-      status TEXT DEFAULT 'active',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(service_id) REFERENCES services(id)
-    )`, (err) => {
-      if (err) {
-        console.error('Error creating spare_parts table:', err.message);
-        reject(err);
-        return;
-      }
-      console.log('Spare parts table ready');
-    });
+      db.run(`CREATE TABLE IF NOT EXISTS spare_parts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        service_id INTEGER,
+        name TEXT NOT NULL,
+        original_price INTEGER NOT NULL,
+        discount_percent INTEGER DEFAULT 0,
+        final_price INTEGER,
+        warranty TEXT,
+        repair_time TEXT,
+        description TEXT,
+        status TEXT DEFAULT 'active',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(service_id) REFERENCES services(id)
+      )`, (err) => {
+        if (err) return reject(err);
+        console.log('Spare parts table ready');
+      });
 
-    // Tạo bảng orders
-    db.run(`CREATE TABLE IF NOT EXISTS orders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER,
-      service_id INTEGER,
-      spare_part_id INTEGER,
-      customer_name TEXT NOT NULL,
-      customer_phone TEXT NOT NULL,
-      customer_email TEXT,
-      scheduled_time DATETIME,
-      notes TEXT,
-      status TEXT DEFAULT 'pending',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(user_id) REFERENCES users(id),
-      FOREIGN KEY(service_id) REFERENCES services(id),
-      FOREIGN KEY(spare_part_id) REFERENCES spare_parts(id)
-    )`, (err) => {
-      if (err) {
-        console.error('Error creating orders table:', err.message);
-        reject(err);
-        return;
-      }
-      console.log('Orders table ready');
-      resolve();
+      db.run(`CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        service_id INTEGER,
+        spare_part_id INTEGER,
+        customer_name TEXT NOT NULL,
+        customer_phone TEXT NOT NULL,
+        customer_email TEXT,
+        scheduled_time DATETIME,
+        notes TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        FOREIGN KEY(service_id) REFERENCES services(id),
+        FOREIGN KEY(spare_part_id) REFERENCES spare_parts(id)
+      )`, (err) => {
+        if (err) return reject(err);
+        console.log('Orders table ready');
+      });
+
+      db.run(`CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        company_name TEXT,
+        phone TEXT,
+        phone_feedback TEXT,
+        address TEXT,
+        email TEXT,
+        facebook TEXT,
+        youtube TEXT,
+        zalo TEXT,
+        tiktok TEXT,
+        messenger TEXT,
+        instagram TEXT,
+        certificates TEXT,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`, (err) => {
+        if (err) return reject(err);
+        console.log('Settings table ready');
+      });
+
+      db.run(`CREATE TABLE IF NOT EXISTS static_pages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        slug TEXT UNIQUE NOT NULL,
+        title TEXT,
+        content TEXT,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`, (err) => {
+        if (err) {
+          console.error('Error creating static_pages table:', err.message);
+          reject(err);
+          return;
+        }
+        console.log('Static pages table ready');
+        // CHỈ resolve() ở callback cuối cùng này!
+        resolve();
+      });
     });
   });
 }
