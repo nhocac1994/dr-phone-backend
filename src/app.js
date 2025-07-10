@@ -4,6 +4,7 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const path = require('path');
 const { initDb, createDefaultAdmin, createDefaultCategories } = require('./config/db');
+const fs = require('fs');
 
 // Debug logging
 console.log('Current directory:', process.cwd());
@@ -41,7 +42,18 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Cho phép xử lý form data
 app.use(morgan('dev'));
+
+// Phục vụ file tĩnh từ thư mục public
+app.use('/img', (req, res, next) => {
+  console.log('Image request:', req.url);
+  const filePath = path.join(__dirname, '../public/img', req.url.split('?')[0]);
+  console.log('Image file path:', filePath);
+  console.log('File exists:', fs.existsSync(filePath));
+  next();
+}, express.static(path.join(__dirname, '../public/img')));
+app.use('/public', express.static(path.join(__dirname, '../public')));
 
 // Khởi tạo DB và admin mặc định
 initDb();
@@ -54,6 +66,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/services', require('./routes/services'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/categories', require('./routes/categories'));
+app.use('/api/banners', require('./routes/banners'));
 
 // Health check
 app.get('/', (req, res) => {
