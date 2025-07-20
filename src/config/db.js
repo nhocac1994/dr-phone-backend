@@ -20,17 +20,34 @@ function initDb() {
     db.serialize(() => {
       db.run('PRAGMA foreign_keys = ON');
 
+      let tablesCreated = 0;
+      const totalTables = 7;
+
+      const checkComplete = () => {
+        tablesCreated++;
+        if (tablesCreated === totalTables) {
+          console.log('All tables created successfully');
+          resolve();
+        }
+      };
+
       db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE,
         password TEXT NOT NULL,
         role TEXT DEFAULT 'user',
-        status TEXT DEFAULT 'active',
+        is_active BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`, (err) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error('Error creating users table:', err);
+          reject(err);
+          return;
+        }
         console.log('Users table ready');
+        checkComplete();
       });
 
       db.run(`CREATE TABLE IF NOT EXISTS categories (
@@ -41,8 +58,13 @@ function initDb() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`, (err) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error('Error creating categories table:', err);
+          reject(err);
+          return;
+        }
         console.log('Categories table ready');
+        checkComplete();
       });
 
       db.run(`CREATE TABLE IF NOT EXISTS sub_categories (
@@ -55,8 +77,13 @@ function initDb() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(category_id) REFERENCES categories(id)
       )`, (err) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error('Error creating sub_categories table:', err);
+          reject(err);
+          return;
+        }
         console.log('Sub categories table ready');
+        checkComplete();
       });
 
       db.run(`CREATE TABLE IF NOT EXISTS services (
@@ -80,8 +107,13 @@ function initDb() {
         FOREIGN KEY(category_id) REFERENCES categories(id),
         FOREIGN KEY(sub_category_id) REFERENCES sub_categories(id)
       )`, (err) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error('Error creating services table:', err);
+          reject(err);
+          return;
+        }
         console.log('Services table ready');
+        checkComplete();
       });
 
       db.run(`CREATE TABLE IF NOT EXISTS spare_parts (
@@ -99,8 +131,13 @@ function initDb() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(service_id) REFERENCES services(id)
       )`, (err) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error('Error creating spare_parts table:', err);
+          reject(err);
+          return;
+        }
         console.log('Spare parts table ready');
+        checkComplete();
       });
 
       db.run(`CREATE TABLE IF NOT EXISTS orders (
@@ -120,8 +157,13 @@ function initDb() {
         FOREIGN KEY(service_id) REFERENCES services(id),
         FOREIGN KEY(spare_part_id) REFERENCES spare_parts(id)
       )`, (err) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error('Error creating orders table:', err);
+          reject(err);
+          return;
+        }
         console.log('Orders table ready');
+        checkComplete();
       });
 
       db.run(`CREATE TABLE IF NOT EXISTS settings (
@@ -140,8 +182,13 @@ function initDb() {
         certificates TEXT,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`, (err) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error('Error creating settings table:', err);
+          reject(err);
+          return;
+        }
         console.log('Settings table ready');
+        checkComplete();
       });
 
       db.run(`CREATE TABLE IF NOT EXISTS static_pages (
@@ -152,53 +199,102 @@ function initDb() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`, (err) => {
         if (err) {
-          console.error('Error creating static_pages table:', err.message);
+          console.error('Error creating static_pages table:', err);
           reject(err);
           return;
         }
         console.log('Static pages table ready');
-        // CHỈ resolve() ở callback cuối cùng này!
-        resolve();
+        checkComplete();
+      });
+
+      db.run(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        endpoint TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        UNIQUE(user_id, endpoint)
+      )`, (err) => {
+        if (err) {
+          console.error('Error creating push_subscriptions table:', err);
+          reject(err);
+          return;
+        }
+        console.log('Push subscriptions table ready');
+        checkComplete();
       });
     });
   });
 }
 
-// Tạo admin mặc định
-async function createDefaultAdmin() {
+// Tạo tài khoản mặc định
+async function createDefaultUsers() {
   return new Promise((resolve, reject) => {
-    const defaultAdmin = {
-      username: 'admin',
-      password: bcrypt.hashSync('admin123', 10),
-      role: 'admin'
-    };
-
-    db.get('SELECT id FROM users WHERE username = ?', [defaultAdmin.username], (err, user) => {
-      if (err) {
-        console.error('Error checking admin:', err.message);
-        reject(err);
-        return;
+    const defaultUsers = [
+      {
+        username: 'admin',
+        email: 'admin@drphone.com',
+        password: bcrypt.hashSync('admin123', 10),
+        role: 'admin',
+        is_active: true
+      },
+      {
+        username: 'user1',
+        email: 'user1@drphone.com',
+        password: bcrypt.hashSync('user123', 10),
+        role: 'user',
+        is_active: true
+      },
+      {
+        username: 'staff1',
+        email: 'staff1@drphone.com',
+        password: bcrypt.hashSync('staff123', 10),
+        role: 'user',
+        is_active: true
       }
+    ];
 
-      if (!user) {
-        db.run(
-          'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-          [defaultAdmin.username, defaultAdmin.password, defaultAdmin.role],
-          (err) => {
-            if (err) {
-              console.error('Error creating admin:', err.message);
-              reject(err);
-            } else {
-              console.log('Default admin created');
-              resolve();
-            }
-          }
-        );
-      } else {
-        console.log('Admin already exists');
+    let completed = 0;
+    const totalUsers = defaultUsers.length;
+
+    const checkComplete = () => {
+      completed++;
+      if (completed === totalUsers) {
+        console.log('All default users created/checked');
         resolve();
       }
-    });
+    };
+
+    for (const user of defaultUsers) {
+      db.get('SELECT id FROM users WHERE username = ?', [user.username], (err, existingUser) => {
+        if (err) {
+          console.error(`Error checking user ${user.username}:`, err.message);
+          checkComplete();
+          return;
+        }
+
+        if (!existingUser) {
+          db.run(
+            'INSERT INTO users (username, email, password, role, is_active) VALUES (?, ?, ?, ?, ?)',
+            [user.username, user.email, user.password, user.role, user.is_active],
+            (err) => {
+              if (err) {
+                console.error(`Error creating user ${user.username}:`, err.message);
+              } else {
+                console.log(`Default user ${user.username} created`);
+              }
+              checkComplete();
+            }
+          );
+        } else {
+          console.log(`User ${user.username} already exists`);
+          checkComplete();
+        }
+      });
+    }
   });
 }
 
@@ -358,9 +454,135 @@ async function createDefaultCategories() {
   });
 }
 
+// Tạo dữ liệu mẫu cho static pages
+async function createDefaultStaticPages() {
+  return new Promise((resolve, reject) => {
+    const defaultPages = [
+      { slug: 'payment', title: 'Hình thức thanh toán', content: '<h2>Hình thức thanh toán</h2><p>Chúng tôi chấp nhận các hình thức thanh toán sau:</p><ul><li>Tiền mặt</li><li>Chuyển khoản ngân hàng</li><li>Ví điện tử</li></ul>' },
+      { slug: 'warranty', title: 'Chính sách bảo hành', content: '<h2>Chính sách bảo hành</h2><p>Chúng tôi cam kết bảo hành:</p><ul><li>Linh kiện chính hãng: 12 tháng</li><li>Dịch vụ sửa chữa: 3 tháng</li><li>Bảo hành theo tiêu chuẩn nhà sản xuất</li></ul>' },
+      { slug: 'privacy', title: 'Chính sách bảo mật', content: '<h2>Chính sách bảo mật</h2><p>Thông tin của bạn được bảo mật tuyệt đối:</p><ul><li>Không chia sẻ thông tin cá nhân</li><li>Mã hóa dữ liệu</li><li>Tuân thủ quy định GDPR</li></ul>' },
+      { slug: 'return', title: 'Chính sách đổi trả', content: '<h2>Chính sách đổi trả</h2><p>Chúng tôi hỗ trợ đổi trả trong vòng 7 ngày:</p><ul><li>Sản phẩm còn nguyên vẹn</li><li>Có hóa đơn mua hàng</li><li>Không sử dụng dịch vụ</li></ul>' },
+      { slug: 'recruitment', title: 'Tuyển dụng', content: '<h2>Tuyển dụng</h2><p>Chúng tôi đang tuyển dụng các vị trí:</p><ul><li>Kỹ thuật viên sửa chữa</li><li>Nhân viên bán hàng</li><li>Quản lý cửa hàng</li></ul>' },
+      { slug: 'about', title: 'Giới thiệu', content: '<h2>Giới thiệu</h2><p>Chúng tôi là đơn vị chuyên sửa chữa điện thoại uy tín:</p><ul><li>Kinh nghiệm 10+ năm</li><li>Đội ngũ kỹ thuật viên chuyên nghiệp</li><li>Linh kiện chính hãng</li></ul>' },
+      { slug: 'news', title: 'Tin tức', content: '<h2>Tin tức</h2><p>Cập nhật những tin tức mới nhất về công nghệ và sửa chữa điện thoại.</p>' },
+      { slug: 'partners', title: 'Đối tác thương hiệu', content: '<h2>Đối tác thương hiệu</h2><p>Chúng tôi là đối tác chính thức của các thương hiệu:</p><ul><li>Apple</li><li>Samsung</li><li>Xiaomi</li><li>OPPO</li></ul>' },
+      { slug: 'owner', title: 'Thông tin chủ sở hữu Website', content: '<h2>Thông tin chủ sở hữu Website</h2><p>Thông tin về chủ sở hữu và quản lý website.</p>' },
+      { slug: 'license', title: 'Giấy phép ủy quyền', content: '<h2>Giấy phép ủy quyền</h2><p>Chúng tôi có đầy đủ giấy phép và chứng chỉ:</p><ul><li>Giấy phép kinh doanh</li><li>Chứng chỉ kỹ thuật viên</li><li>Giấy phép sửa chữa</li></ul>' }
+    ];
+
+    let completed = 0;
+    const total = defaultPages.length;
+
+    defaultPages.forEach(page => {
+      db.get('SELECT id FROM static_pages WHERE slug = ?', [page.slug], (err, row) => {
+        if (err) {
+          console.error('Error checking static page:', err.message);
+          completed++;
+          if (completed === total) resolve();
+          return;
+        }
+
+        if (!row) {
+          db.run('INSERT INTO static_pages (slug, title, content) VALUES (?, ?, ?)',
+            [page.slug, page.title, page.content],
+            (err) => {
+              if (err) {
+                console.error('Error creating static page:', err.message);
+              } else {
+                console.log(`Created static page: ${page.slug}`);
+              }
+              completed++;
+              if (completed === total) resolve();
+            }
+          );
+        } else {
+          console.log(`Static page already exists: ${page.slug}`);
+          completed++;
+          if (completed === total) resolve();
+        }
+      });
+    });
+  });
+}
+
+// Tạo dữ liệu mẫu cho orders
+async function createDefaultOrders() {
+  return new Promise((resolve, reject) => {
+    console.log('Checking for default orders...');
+    db.get('SELECT COUNT(*) as count FROM orders', [], (err, row) => {
+      if (err) {
+        console.error('Error checking orders:', err.message);
+        reject(err);
+        return;
+      }
+      if (row.count === 0) {
+        const defaultOrders = [
+          {
+            user_id: 1,
+            service_id: 1,
+            customer_name: 'Nguyễn Văn A',
+            customer_phone: '0123456789',
+            customer_email: 'nguyenvana@email.com',
+            scheduled_time: '2024-01-20 14:00:00',
+            notes: 'Màn hình bị vỡ, cần thay màn hình mới',
+            status: 'pending'
+          },
+          {
+            user_id: 1,
+            service_id: 2,
+            customer_name: 'Trần Thị B',
+            customer_phone: '0987654321',
+            customer_email: 'tranthib@email.com',
+            scheduled_time: '2024-01-21 10:00:00',
+            notes: 'Pin chai nhanh, cần thay pin',
+            status: 'confirmed'
+          },
+          {
+            user_id: 1,
+            service_id: 3,
+            customer_name: 'Lê Văn C',
+            customer_phone: '0369852147',
+            customer_email: 'levanc@email.com',
+            scheduled_time: '2024-01-22 16:00:00',
+            notes: 'Không sạc được, có thể do cổng sạc bị hỏng',
+            status: 'processing'
+          }
+        ];
+
+        let completed = 0;
+        const total = defaultOrders.length;
+
+        defaultOrders.forEach(order => {
+          db.run(
+            'INSERT INTO orders (user_id, service_id, customer_name, customer_phone, customer_email, scheduled_time, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [order.user_id, order.service_id, order.customer_name, order.customer_phone, order.customer_email, order.scheduled_time, order.notes, order.status],
+            (err) => {
+              if (err) {
+                console.error('Error creating order:', err.message);
+              } else {
+                console.log(`Created order: ${order.customer_name}`);
+              }
+              completed++;
+              if (completed === total) {
+                console.log('Default orders created successfully');
+                resolve();
+              }
+            }
+          );
+        });
+      } else {
+        console.log('Orders already exist');
+        resolve();
+      }
+    });
+  });
+}
+
 module.exports = {
   db,
   initDb,
-  createDefaultAdmin,
-  createDefaultCategories
+  createDefaultUsers,
+  createDefaultCategories,
+  createDefaultStaticPages,
+  createDefaultOrders
 }; 

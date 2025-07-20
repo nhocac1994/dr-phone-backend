@@ -67,6 +67,9 @@ app.use('/api/services', require('./routes/services'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/banners', require('./routes/banners'));
+app.use('/api/settings', require('./routes/settings'));
+app.use('/api/static-pages', require('./routes/staticPages'));
+app.use('/api/upload', require('./routes/upload'));
 
 // Health check
 app.get('/', (req, res) => {

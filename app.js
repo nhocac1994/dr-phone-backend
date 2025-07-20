@@ -4,7 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
-const { db, initDb, createDefaultAdmin, createDefaultCategories } = require('./src/config/db');
+const { db, initDb, createDefaultUsers, createDefaultCategories, createDefaultStaticPages, createDefaultOrders } = require('./src/config/db');
 
 const app = express();
 
@@ -89,8 +89,10 @@ const userRoutes = require('./src/routes/users');
 const orderRoutes = require('./src/routes/orders');
 const categoryRoutes = require('./src/routes/categories');
 const bannerRoutes = require('./src/routes/banners');
-// const settingsRoutes = require('./src/routes/settings');
-// const staticPagesRoutes = require('./src/routes/staticPages');
+const settingsRoutes = require('./src/routes/settings');
+const staticPagesRoutes = require('./src/routes/staticPages');
+const uploadRoutes = require('./src/routes/upload');
+const notificationRoutes = require('./src/routes/notifications');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
@@ -98,8 +100,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/banners', bannerRoutes);
-// app.use('/api/settings', settingsRoutes);
-// app.use('/api/static-pages', staticPagesRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/static-pages', staticPagesRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/', (req, res) => {
@@ -150,10 +154,14 @@ async function initializeApp() {
     console.log('--- Bắt đầu initDb ---');
     await initDb();
     console.log('--- xong initDb ---');
-    await createDefaultAdmin();
-    console.log('--- xong createDefaultAdmin ---');
+    await createDefaultUsers();
+    console.log('--- xong createDefaultUsers ---');
     await createDefaultCategories();
     console.log('--- xong createDefaultCategories ---');
+    await createDefaultStaticPages();
+    console.log('--- xong createDefaultStaticPages ---');
+    await createDefaultOrders();
+    console.log('--- xong createDefaultOrders ---');
     const PORT = process.env.PORT || 8080;
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);

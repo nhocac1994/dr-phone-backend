@@ -1,26 +1,49 @@
-const db = require('../config/db');
+const { db } = require('../config/db');
 
 const orderController = {
-  // Lấy tất cả đơn hàng (admin only)
+  // Lấy đơn hàng (admin: tất cả, user: chỉ của mình)
   getAll: (req, res) => {
-    const query = `
-      SELECT o.*, 
-             s.name as service_name, 
-             s.price as service_price,
-             u.username as user_username
-      FROM orders o
-      LEFT JOIN services s ON o.service_id = s.id
-      LEFT JOIN users u ON o.user_id = u.id
-      ORDER BY o.created_at DESC
-    `;
-    
-    db.all(query, [], (err, orders) => {
-      if (err) {
-        console.error('Error getting orders:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      res.json(orders);
-    });
+    // Kiểm tra role của user
+    if (req.user.role === 'admin') {
+      // Admin có thể xem tất cả orders
+      const query = `
+        SELECT o.*, 
+               s.name as service_name, 
+               s.price as service_price,
+               u.username as user_username
+        FROM orders o
+        LEFT JOIN services s ON o.service_id = s.id
+        LEFT JOIN users u ON o.user_id = u.id
+        ORDER BY o.created_at DESC
+      `;
+      
+      db.all(query, [], (err, orders) => {
+        if (err) {
+          console.error('Error getting orders:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        }
+        res.json(orders);
+      });
+    } else {
+      // User chỉ xem orders của mình
+      const query = `
+        SELECT o.*, 
+               s.name as service_name, 
+               s.price as service_price
+        FROM orders o
+        LEFT JOIN services s ON o.service_id = s.id
+        WHERE o.user_id = ?
+        ORDER BY o.created_at DESC
+      `;
+      
+      db.all(query, [req.user.id], (err, orders) => {
+        if (err) {
+          console.error('Error getting user orders:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        }
+        res.json(orders);
+      });
+    }
   },
 
   // Lấy đơn hàng của user hiện tại
@@ -52,6 +75,9 @@ const orderController = {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Nếu có user đăng nhập thì lấy user_id, không thì để null
+    const user_id = req.user ? req.user.id : null;
+
     const query = `
       INSERT INTO orders (
         user_id, 
@@ -67,7 +93,7 @@ const orderController = {
     
     db.run(
       query, 
-      [req.user.id, service_id, customer_name, customer_phone, customer_email, scheduled_time, notes],
+      [user_id, service_id, customer_name, customer_phone, customer_email, scheduled_time, notes],
       function(err) {
         if (err) {
           console.error('Error creating order:', err);
@@ -75,7 +101,7 @@ const orderController = {
         }
         res.status(201).json({ 
           id: this.lastID,
-          user_id: req.user.id,
+          user_id: user_id,
           service_id,
           customer_name,
           customer_phone,
@@ -134,6 +160,34 @@ const orderController = {
       }
       res.json({ message: 'Order deleted successfully' });
     });
+  },
+
+  // Lấy số lượng notifications (pending orders)
+  getNotificationCount: (req, res) => {
+    // Kiểm tra role của user
+    if (req.user.role === 'admin') {
+      // Admin đếm tất cả pending orders
+      const query = 'SELECT COUNT(*) as count FROM orders WHERE status = ?';
+      
+      db.get(query, ['pending'], (err, result) => {
+        if (err) {
+          console.error('Error getting notification count:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        }
+        res.json({ count: result.count });
+      });
+    } else {
+      // User chỉ đếm pending orders của mình
+      const query = 'SELECT COUNT(*) as count FROM orders WHERE status = ? AND user_id = ?';
+      
+      db.get(query, ['pending', req.user.id], (err, result) => {
+        if (err) {
+          console.error('Error getting user notification count:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        }
+        res.json({ count: result.count });
+      });
+    }
   }
 };
 
