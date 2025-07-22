@@ -21,7 +21,7 @@ function initDb() {
       db.run('PRAGMA foreign_keys = ON');
 
       let tablesCreated = 0;
-      const totalTables = 7;
+      const totalTables = 10;
 
       const checkComplete = () => {
         tablesCreated++;
@@ -224,6 +224,38 @@ function initDb() {
           return;
         }
         console.log('Push subscriptions table ready');
+        checkComplete();
+      });
+
+      db.run(`CREATE TABLE IF NOT EXISTS flashsale (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        start DATETIME,
+        end DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`, (err) => {
+        if (err) {
+          console.error('Error creating flashsale table:', err);
+          reject(err);
+          return;
+        }
+        console.log('Flashsale table ready');
+        checkComplete();
+      });
+
+      db.run(`CREATE TABLE IF NOT EXISTS flashsale_services (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        flashsale_id INTEGER,
+        service_id INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(flashsale_id) REFERENCES flashsale(id),
+        FOREIGN KEY(service_id) REFERENCES services(id)
+      )`, (err) => {
+        if (err) {
+          console.error('Error creating flashsale_services table:', err);
+          reject(err);
+          return;
+        }
+        console.log('Flashsale services table ready');
         checkComplete();
       });
     });

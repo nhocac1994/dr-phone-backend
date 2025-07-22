@@ -12,7 +12,7 @@ const app = express();
 const corsOptions = {
   origin: ['http://localhost:5173', 'http://localhost:3000', 'https://dr-phone.netlify.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept', 'Cache-Control', 'Pragma'],
   exposedHeaders: ['Content-Length', 'Content-Type'],
   credentials: true,
   preflightContinue: false,
@@ -93,6 +93,7 @@ const settingsRoutes = require('./src/routes/settings');
 const staticPagesRoutes = require('./src/routes/staticPages');
 const uploadRoutes = require('./src/routes/upload');
 const notificationRoutes = require('./src/routes/notifications');
+const flashsaleRoutes = require('./src/routes/flashsale');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
@@ -104,6 +105,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/static-pages', staticPagesRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/flashsale', flashsaleRoutes);
 
 // Health check
 app.get('/', (req, res) => {
